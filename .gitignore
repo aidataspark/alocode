@@ -14,6 +14,8 @@ pnpm-lock.yaml
 .venv
 .actrc
 
+.toread
+
 # Ignore coverage directories and files
 coverage
 # But don't ignore the coverage scripts in .github/scripts/
@@ -28,3 +30,4 @@ src/core/controller/*/index.ts
 src/core/controller/grpc-service-config.ts
 webview-ui/src/services/grpc-client.ts
 src/standalone/server-setup.ts
+
