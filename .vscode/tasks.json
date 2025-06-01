@@ -8,7 +8,7 @@
 			"type": "npm",
 			"script": "compile-standalone",
 			"group": "build",
-			"problemMatcher": [],
+			"problemMatcher": "$esbuild-watch",
 			"presentation": {
 				"reveal": "always"
 			}
@@ -17,7 +17,7 @@
 			"label": "npm: protos",
 			"type": "npm",
 			"script": "protos",
-			"problemMatcher": [],
+			"problemMatcher": "$esbuild",
 			"isBackground": false,
 			"presentation": {
 				"reveal": "always"

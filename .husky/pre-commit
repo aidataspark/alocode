@@ -1,4 +1,20 @@
+#!/usr/bin/env bash
+# Source NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# Attempt to use Node version from .nvmrc
+if [ -f ".nvmrc" ]; then
+  nvm use || echo "Warning: 'nvm use' failed in pre-commit hook. Hook might use system Node."
+else
+  echo "Warning: .nvmrc not found in pre-commit hook. Hook might use system Node."
+fi
+
 echo "Running pre-commit checks..."
+# Add node version check for debugging
+echo "Node version in pre-commit hook: $(node -v)"
+echo "NPM version in pre-commit hook: $(npm -v)"
 
 # Run ESLint
 echo "Running ESLint..."

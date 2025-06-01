@@ -50,19 +50,19 @@
 			"activitybar": [
 				{
 					"id": "claude-dev-ActivityBar",
-					"title": "Cline (⌘+')",
+					"title": "AloCode (⌘+')",
 					"icon": "assets/icons/icon.svg",
 					"when": "isMac"
 				},
 				{
 					"id": "claude-dev-ActivityBar",
-					"title": "Cline (Ctrl+')",
+					"title": "AloCode (Ctrl+')",
 					"icon": "assets/icons/icon.svg",
 					"when": "isWindows"
 				},
 				{
 					"id": "claude-dev-ActivityBar",
-					"title": "Cline (Ctrl+')",
+					"title": "AloCode (Ctrl+')",
 					"icon": "assets/icons/icon.svg",
 					"when": "isLinux || !isMac && !isWindows"
 				}
