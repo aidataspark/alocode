@@ -35,7 +35,6 @@ export interface ExtensionMessage {
 		| "userCreditsBalance"
 		| "userCreditsUsage"
 		| "userCreditsPayments"
-		| "browserConnectionResult"
 		| "fileSearchResults"
 		| "grpc_response" // New type for gRPC responses
 	text?: string
@@ -211,6 +210,7 @@ export interface ClineSayTool {
 		| "listFilesRecursive"
 		| "listCodeDefinitionNames"
 		| "searchFiles"
+		| "webFetch"
 	path?: string
 	diff?: string
 	content?: string

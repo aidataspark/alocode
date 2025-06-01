@@ -104,6 +104,7 @@ import { isInTestMode } from "../../services/test/TestMode"
 import { processFilesIntoText } from "@integrations/misc/extract-text"
 import { featureFlagsService } from "@services/posthog/feature-flags/FeatureFlagsService"
 import { StreamingJsonReplacer, ChangeLocation } from "@core/assistant-message/diff-json"
+import { parseAssistantMessageV3 } from "../assistant-message/parse-assistant-message"
 
 export const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -1521,6 +1522,8 @@ export class Task {
 					]
 				case "browser_action":
 					return this.autoApprovalSettings.actions.useBrowser
+				case "web_fetch":
+					return this.autoApprovalSettings.actions.useBrowser
 				case "access_mcp_resource":
 				case "use_mcp_tool":
 					return this.autoApprovalSettings.actions.useMcp
@@ -1590,7 +1593,7 @@ export class Task {
 	private async isClaude4ModelFamily(): Promise<boolean> {
 		const model = this.api.getModel()
 		const modelId = model.id
-		return modelId.includes("claude-sonnet-4") || modelId.includes("claude-opus-4")
+		return modelId.includes("sonnet-4") || modelId.includes("opus-4")
 	}
 
 	async *attemptApiRequest(previousApiReqIndex: number): ApiStream {
@@ -1987,6 +1990,8 @@ export class Task {
 							return `[${block.name}]`
 						case "new_rule":
 							return `[${block.name} for '${block.params.path}']`
+						case "web_fetch":
+							return `[${block.name} for '${block.params.url}']`
 					}
 				}
 
@@ -2016,16 +2021,27 @@ export class Task {
 					break
 				}
 
-				const pushToolResult = (content: ToolResponse) => {
-					this.userMessageContent.push({
-						type: "text",
-						text: `${toolDescription()} Result:`,
-					})
+				const pushToolResult = (content: ToolResponse, isClaude4ModelFamily: boolean = false) => {
 					if (typeof content === "string") {
-						this.userMessageContent.push({
-							type: "text",
-							text: content || "(tool did not return anything)",
-						})
+						const resultText = content || "(tool did not return anything)"
+
+						if (isClaude4ModelFamily) {
+							// Claude 4 family: Use function_results format
+							this.userMessageContent.push({
+								type: "text",
+								text: `<function_results>\n${resultText}\n</function_results>`,
+							})
+						} else {
+							// Non-Claude 4: Use traditional format with header
+							this.userMessageContent.push({
+								type: "text",
+								text: `${toolDescription()} Result:`,
+							})
+							this.userMessageContent.push({
+								type: "text",
+								text: resultText,
+							})
+						}
 					} else {
 						this.userMessageContent.push(...content)
 					}
@@ -2095,7 +2111,7 @@ export class Task {
 					}
 				}
 
-				const handleError = async (action: string, error: Error) => {
+				const handleError = async (action: string, error: Error, isClaude4ModelFamily: boolean = false) => {
 					if (this.abandoned) {
 						console.log("Ignoring error since task was abandoned (i.e. from task cancellation after resetting)")
 						return
@@ -2105,12 +2121,8 @@ export class Task {
 						"error",
 						`Error ${action}:\n${error.message ?? JSON.stringify(serializeError(error), null, 2)}`,
 					)
-					// this.toolResults.push({
-					// 	type: "tool_result",
-					// 	tool_use_id: toolUseId,
-					// 	content: await this.formatToolError(errorString),
-					// })
-					pushToolResult(formatResponse.toolError(errorString))
+
+					pushToolResult(formatResponse.toolError(errorString), isClaude4ModelFamily)
 				}
 
 				// If block is partial, remove partial closing tag so its not presented to user
@@ -2558,6 +2570,7 @@ export class Task {
 						}
 					}
 					case "list_files": {
+						const isClaude4ModelFamily = await this.isClaude4ModelFamily()
 						const relDirPath: string | undefined = block.params.path
 						const recursiveRaw: string | undefined = block.params.recursive
 						const recursive = recursiveRaw?.toLowerCase() === "true"
@@ -2583,7 +2596,10 @@ export class Task {
 							} else {
 								if (!relDirPath) {
 									this.consecutiveMistakeCount++
-									pushToolResult(await this.sayAndCreateMissingParamError("list_files", "path"))
+									pushToolResult(
+										await this.sayAndCreateMissingParamError("list_files", "path"),
+										isClaude4ModelFamily,
+									)
 									await this.saveCheckpoint()
 									break
 								}
@@ -2622,12 +2638,12 @@ export class Task {
 									}
 									telemetryService.captureToolUsage(this.taskId, block.name, false, true)
 								}
-								pushToolResult(result)
+								pushToolResult(result, isClaude4ModelFamily)
 								await this.saveCheckpoint()
 								break
 							}
 						} catch (error) {
-							await handleError("listing files", error)
+							await handleError("listing files", error, isClaude4ModelFamily)
 							await this.saveCheckpoint()
 							break
 						}
@@ -2703,6 +2719,7 @@ export class Task {
 						}
 					}
 					case "search_files": {
+						const isClaude4ModelFamily = await this.isClaude4ModelFamily()
 						const relDirPath: string | undefined = block.params.path
 						const regex: string | undefined = block.params.regex
 						const filePattern: string | undefined = block.params.file_pattern
@@ -2730,13 +2747,19 @@ export class Task {
 							} else {
 								if (!relDirPath) {
 									this.consecutiveMistakeCount++
-									pushToolResult(await this.sayAndCreateMissingParamError("search_files", "path"))
+									pushToolResult(
+										await this.sayAndCreateMissingParamError("search_files", "path"),
+										isClaude4ModelFamily,
+									)
 									await this.saveCheckpoint()
 									break
 								}
 								if (!regex) {
 									this.consecutiveMistakeCount++
-									pushToolResult(await this.sayAndCreateMissingParamError("search_files", "regex"))
+									pushToolResult(
+										await this.sayAndCreateMissingParamError("search_files", "regex"),
+										isClaude4ModelFamily,
+									)
 									await this.saveCheckpoint()
 									break
 								}
@@ -2774,12 +2797,12 @@ export class Task {
 									}
 									telemetryService.captureToolUsage(this.taskId, block.name, false, true)
 								}
-								pushToolResult(results)
+								pushToolResult(results, isClaude4ModelFamily)
 								await this.saveCheckpoint()
 								break
 							}
 						} catch (error) {
-							await handleError("searching files", error)
+							await handleError("searching files", error, isClaude4ModelFamily)
 							await this.saveCheckpoint()
 							break
 						}
@@ -3632,6 +3655,86 @@ export class Task {
 							break
 						}
 					}
+					case "web_fetch": {
+						const url: string | undefined = block.params.url
+						// TODO: Implement caching for web_fetch
+						const sharedMessageProps: ClineSayTool = {
+							tool: "webFetch",
+							path: removeClosingTag("url", url),
+							content: `Fetching URL: ${removeClosingTag("url", url)}`,
+						}
+
+						try {
+							if (block.partial) {
+								const partialMessage = JSON.stringify({
+									...sharedMessageProps,
+									operationIsLocatedInWorkspace: false, // web_fetch is always external
+								} satisfies ClineSayTool)
+
+								// WebFetch is a read-only operation, generally safe.
+								// Let's assume it follows similar auto-approval logic to read_file for now.
+								// We might need a dedicated auto-approval setting for it later.
+								if (this.shouldAutoApproveTool("web_fetch" as ToolUseName)) {
+									this.removeLastPartialMessageIfExistsWithType("ask", "tool")
+									await this.say("tool", partialMessage, undefined, undefined, block.partial)
+								} else {
+									this.removeLastPartialMessageIfExistsWithType("say", "tool")
+									await this.ask("tool", partialMessage, block.partial).catch(() => {})
+								}
+								break
+							} else {
+								if (!url) {
+									this.consecutiveMistakeCount++
+									pushToolResult(await this.sayAndCreateMissingParamError("web_fetch", "url"))
+									await this.saveCheckpoint()
+									break
+								}
+
+								this.consecutiveMistakeCount = 0
+								const completeMessage = JSON.stringify({
+									...sharedMessageProps,
+									operationIsLocatedInWorkspace: false,
+								} satisfies ClineSayTool)
+
+								if (this.shouldAutoApproveTool("web_fetch" as ToolUseName)) {
+									this.removeLastPartialMessageIfExistsWithType("ask", "tool")
+									await this.say("tool", completeMessage, undefined, undefined, false)
+									this.consecutiveAutoApprovedRequestsCount++
+									telemetryService.captureToolUsage(this.taskId, "web_fetch" as ToolUseName, true, true)
+								} else {
+									showNotificationForApprovalIfAutoApprovalEnabled(`Cline wants to fetch content from ${url}`)
+									this.removeLastPartialMessageIfExistsWithType("say", "tool")
+									const didApprove = await askApproval("tool", completeMessage)
+									if (!didApprove) {
+										telemetryService.captureToolUsage(this.taskId, "web_fetch" as ToolUseName, false, false)
+										await this.saveCheckpoint()
+										break
+									}
+									telemetryService.captureToolUsage(this.taskId, "web_fetch" as ToolUseName, false, true)
+								}
+
+								// Fetch Markdown content
+								await this.urlContentFetcher.launchBrowser()
+								const markdownContent = await this.urlContentFetcher.urlToMarkdown(url)
+								await this.urlContentFetcher.closeBrowser()
+
+								// TODO: Implement secondary AI call to process markdownContent with prompt
+								// For now, returning markdown directly.
+								// This will be a significant sub-task.
+								// Placeholder for processed summary:
+								const processedSummary = `Fetched Markdown for ${url}:\n\n${markdownContent}`
+
+								pushToolResult(formatResponse.toolResult(processedSummary))
+								await this.saveCheckpoint()
+								break
+							}
+						} catch (error) {
+							await this.urlContentFetcher.closeBrowser() // Ensure browser is closed on error
+							await handleError("fetching web content", error)
+							await this.saveCheckpoint()
+							break
+						}
+					}
 					case "plan_mode_respond": {
 						const response: string | undefined = block.params.response
 						const optionsRaw: string | undefined = block.params.options
@@ -4256,7 +4359,14 @@ export class Task {
 							assistantMessage += chunk.text
 							// parse raw assistant message into content blocks
 							const prevLength = this.assistantMessageContent.length
-							this.assistantMessageContent = parseAssistantMessageV2(assistantMessage)
+							const enableFunctionCallsParsing = await this.isClaude4ModelFamily()
+
+							if (enableFunctionCallsParsing) {
+								this.assistantMessageContent = parseAssistantMessageV3(assistantMessage)
+							} else {
+								this.assistantMessageContent = parseAssistantMessageV2(assistantMessage)
+							}
+
 							if (this.assistantMessageContent.length > prevLength) {
 								this.userMessageContentReady = false // new content we need to present, reset to false in case previous content set this to true
 							}
