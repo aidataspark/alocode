@@ -261,4 +261,20 @@ from agents import Agent
 *   Pass a list of MCP server instances to `Agent(mcp_servers=[...])`.
 *   The SDK handles listing and calling tools from these servers.
 
-This reference should be consulted by Cline when tasked with generating applications using the OpenAI Agents SDK.
+## 8. Advanced Examples & Architectural Patterns
+
+For complex multi-agent applications and advanced agent architectural patterns, see the companion document `openai_agents_sdk_examples.md`. This document contains:
+
+*   **Complete Multi-Agent Financial Research Application**: A sophisticated example demonstrating manager/orchestrator patterns, agent specialization, agent-as-tool patterns, structured workflows, progress tracking, and error handling.
+*   **Architectural Analysis**: Detailed explanations of when and how to use various patterns like:
+    *   Manager/Orchestrator Pattern for complex workflows
+    *   Agent Specialization for modular, maintainable systems
+    *   Agent-as-Tool Pattern for hierarchical delegation
+    *   Structured Inputs/Outputs with Pydantic models
+    *   Sequential and Parallel Execution patterns
+    *   Progress Tracking and User Feedback
+    *   Error Handling and Resilience strategies
+
+These examples provide production-ready patterns for building sophisticated autonomous applications with the OpenAI Agents SDK.
+
+This reference should be consulted by Cline when tasked with generating applications using the OpenAI Agents SDK. For advanced multi-agent systems, also consult `openai_agents_sdk_examples.md`.
