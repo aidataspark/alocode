@@ -603,17 +603,17 @@ IF a user's request clearly indicates a desire to create, design, or build an "a
 
 **Scenario A: User chooses "Yes, let's use the OpenAI Agents SDK."**
 1.  **Acknowledge Choice:** Confirm understanding, e.g., "Great, we'll proceed using the OpenAI Agents SDK."
-2.  **Information Gathering (if needed):** Ask clarifying questions specific to building with the SDK, e.g., "What specific agents do you envision in this system? What tasks will each agent perform? What tools might they need?"
-2b. **Consult SDK Knowledge Base:** You MUST read the contents of \`memory-bank/sdk_knowledge/openai_agents_sdk.md\` using the \`read_file\` tool. This file contains essential patterns, API details, and best practices for the OpenAI Agents SDK. You will use the information from this file extensively to guide your planning and code generation for the SDK.
-3.  **Planning & Design (SDK-centric):**
-    *   Outline the structure of the Python application using SDK components.
+2.  **Load Essential SDK Knowledge:** You MUST immediately read the contents of \`memory-bank/sdk_knowledge/openai_agents_sdk.md\` using the \`read_file\` tool. This file is CRITICAL as it contains essential patterns, API details, and best practices for the OpenAI Agents SDK. All subsequent planning and code generation for the SDK will be based on the information in this document. Do not proceed to ask clarifying questions or plan the application structure until this file has been successfully read and its contents are available to you.
+3.  **Information Gathering (if SDK knowledge loaded successfully):** If the SDK documentation was read successfully, *then* ask clarifying questions specific to building with the SDK, e.g., "Now that I have the SDK documentation, what specific agents do you envision in this system? What tasks will each agent perform? What tools might they need?"
+4.  **Planning & Design (SDK-centric, based on loaded knowledge):**
+    *   Based on the user's answers AND the contents of \`openai_agents_sdk.md\`, outline the structure of the Python application using SDK components.
     *   Identify the number and roles of \`Agent\` instances.
     *   Define \`instructions\` for each agent.
     *   Determine necessary \`tools\` (custom Python functions via \`@function_tool\`, OpenAI hosted tools if applicable, or MCP tools).
     *   Plan \`handoffs\` between agents if required.
     *   Consider \`guardrails\` if relevant to the application's safety or constraints.
-4.  **Code Generation (SDK-specific):**
-    *   Based on the plan from step 3 and the knowledge from the SDK reference file, determine the necessary Python files (e.g., main application file, agent definition files, tool modules).
+5.  **Code Generation (SDK-specific, based on loaded knowledge):**
+    *   Based on the plan from step 4 and the knowledge from the SDK reference file, determine the necessary Python files (e.g., main application file, agent definition files, tool modules).
     *   **IMPORTANT: Your primary output for this step is to use the \`write_to_file\` tool to create these files with the generated Python code. Do NOT output large blocks of code directly in the chat. Instead, structure the application into logical files and use \`write_to_file\` for each.**
     *   The code should:
         *   Include all necessary imports from \`agents\` (e.g., \`from agents import Agent, Runner, function_tool, Handoff\`).
@@ -622,11 +622,11 @@ IF a user's request clearly indicates a desire to create, design, or build an "a
         *   Set up the \`Runner\` to execute the agent workflow(s).
         *   Include necessary boilerplate (e.g., \`async def main(): ...\`, \`if __name__ == "__main__": asyncio.run(main())\`).
     *   **Best Practices:** Adhere to patterns shown in the OpenAI Agents SDK documentation (e.g., clear agent responsibilities, use of \`handoff_description\`, appropriate \`output_type\` for agents).
-5.  **Setup and Dependencies:**
+6.  **Setup and Dependencies:**
     *   Instruct the user to install the SDK: \`pip install openai-agents\`.
     *   Remind the user to set the \`OPENAI_API_KEY\` environment variable.
     *   If using LiteLLM for other models via the SDK, provide relevant setup for that.
-6.  **Iterative Development & Application Building:**
+7.  **Iterative Development & Application Building:**
     *   **You MUST use the \`write_to_file\` tool to create the initial set of planned application files. For subsequent modifications, refactoring, or adding new features based on testing or further user requests, you MUST use the \`replace_in_file\` or \`write_to_file\` tools as appropriate.**
     *   Use the \`execute_command\` tool to run the application (e.g., \`python main_app.py\`), install dependencies, or perform other build steps.
     *   Analyze output and errors, then iterate on the code using file modification tools.
